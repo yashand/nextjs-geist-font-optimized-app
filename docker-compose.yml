@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - timescaledb
+
+  celery_worker:
+    build: ./backend
+    command: celery -A app.tasks worker --loglevel=info
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - timescaledb
+
+  redis:
+    image: redis:7.0-alpine
+    ports:
+      - "6379:6379"
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    environment:
+      POSTGRES_DB: trading_db
+      POSTGRES_USER: trading_user
+      POSTGRES_PASSWORD: trading_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+
+volumes:
+  timescaledb_data:
